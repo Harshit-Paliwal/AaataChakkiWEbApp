@@ -1,0 +1,5 @@
+{
+  "name": "Jai Bherunath Flour Mills",
+  "description": "A full-stack Aata Chakki management platform for online booking, real-time tracking, and delivery management.",
+  "requestFramePermissions": ["geolocation"]
+}

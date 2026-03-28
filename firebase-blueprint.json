@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "customer", "delivery"] },
+        "address": { "type": "string" },
+        "phone": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Grain grinding order details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerUid": { "type": "string" },
+        "grainType": { "type": "string" },
+        "quantity": { "type": "number" },
+        "pickupSlot": { "type": "string" },
+        "address": { "type": "object", "properties": {
+          "text": { "type": "string" },
+          "lat": { "type": "number" },
+          "lng": { "type": "number" }
+        }},
+        "status": { "type": "string", "enum": ["pending", "pickup", "grinding", "out_for_delivery", "delivered"] },
+        "deliveryBoyUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "pricePerKg": { "type": "number" },
+        "totalPrice": { "type": "number" },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "failed"] }
+      },
+      "required": ["customerUid", "grainType", "quantity", "status"]
+    },
+    "Pricing": {
+      "title": "Pricing",
+      "description": "Pricing configuration for different grain types.",
+      "type": "object",
+      "properties": {
+        "grainType": { "type": "string" },
+        "pricePerKg": { "type": "number" }
+      },
+      "required": ["grainType", "pricePerKg"]
+    },
+    "Queue": {
+      "title": "Queue",
+      "description": "Real-time grinding queue status.",
+      "type": "object",
+      "properties": {
+        "currentOrderId": { "type": "string" },
+        "estimatedTimePerKg": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/orders/{orderId}": { "schema": "Order", "description": "Grinding orders" },
+    "/pricing/{grainType}": { "schema": "Pricing", "description": "Pricing configuration" },
+    "/queue/status": { "schema": "Queue", "description": "Current grinding status" }
+  }
+}

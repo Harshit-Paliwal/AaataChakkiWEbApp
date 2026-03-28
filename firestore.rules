@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, email, displayName, role (admin, customer, delivery), address, phone
+    //
+    // Collection: orders
+    // Fields: id, customerUid, grainType, quantity, pickupSlot, address, status, deliveryBoyUid, createdAt, updatedAt, pricePerKg, totalPrice, paymentStatus
+    //
+    // Collection: pricing
+    // Fields: grainType, pricePerKg
+    //
+    // Collection: queue
+    // Fields: currentOrderId, estimatedTimePerKg
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "rockyrocksingh98@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isDeliveryBoy() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'delivery';
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.role in ['admin', 'customer', 'delivery'];
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['customerUid', 'grainType', 'quantity', 'status']) &&
+             data.customerUid is string &&
+             data.grainType is string &&
+             data.quantity is number &&
+             data.status in ['pending', 'pickup', 'grinding', 'out_for_delivery', 'delivered'];
+    }
+
+    // Rules
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(uid) && isValidUser(request.resource.data) && (request.resource.data.role == 'customer' || isAdmin());
+      allow update: if (isOwner(uid) && request.resource.data.role == resource.data.role) || isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (isAdmin() || isDeliveryBoy() || resource.data.customerUid == request.auth.uid);
+      allow create: if isAuthenticated() && isValidOrder(request.resource.data) && request.resource.data.customerUid == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        (isDeliveryBoy() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+        (resource.data.customerUid == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentStatus', 'updatedAt']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /pricing/{grainType} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /queue/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
